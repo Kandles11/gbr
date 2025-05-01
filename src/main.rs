@@ -85,6 +85,117 @@ impl Bus {
     }
 }
 
+pub fn decode_opcode(opcode: u8) -> Instruction {
+    match opcode {
+        0x40 => Instruction::LD_8BIT(Register::B, Register::B),
+        0x41 => Instruction::LD_8BIT(Register::B, Register::C),
+        0x42 => Instruction::LD_8BIT(Register::B, Register::D),
+        0x43 => Instruction::LD_8BIT(Register::B, Register::E),
+        0x44 => Instruction::LD_8BIT(Register::B, Register::H),
+        0x45 => Instruction::LD_8BIT(Register::B, Register::L),
+
+        0x47 => Instruction::LD_8BIT(Register::B, Register::A),
+        0x48 => Instruction::LD_8BIT(Register::C, Register::B),
+        0x49 => Instruction::LD_8BIT(Register::C, Register::C),
+        0x4A => Instruction::LD_8BIT(Register::C, Register::D),
+        0x4B => Instruction::LD_8BIT(Register::C, Register::E),
+        0x4C => Instruction::LD_8BIT(Register::C, Register::H),
+        0x4D => Instruction::LD_8BIT(Register::C, Register::L),
+
+        0x4F => Instruction::LD_8BIT(Register::C, Register::A),
+        0x50 => Instruction::LD_8BIT(Register::D, Register::B),
+        0x51 => Instruction::LD_8BIT(Register::D, Register::C),
+        0x52 => Instruction::LD_8BIT(Register::D, Register::D),
+        0x53 => Instruction::LD_8BIT(Register::D, Register::E),
+        0x54 => Instruction::LD_8BIT(Register::D, Register::H),
+        0x55 => Instruction::LD_8BIT(Register::D, Register::L),
+
+        0x57 => Instruction::LD_8BIT(Register::D, Register::A),
+        0x58 => Instruction::LD_8BIT(Register::E, Register::B),
+        0x59 => Instruction::LD_8BIT(Register::E, Register::C),
+        0x5A => Instruction::LD_8BIT(Register::E, Register::D),
+        0x5B => Instruction::LD_8BIT(Register::E, Register::E),
+        0x5C => Instruction::LD_8BIT(Register::E, Register::H),
+        0x5D => Instruction::LD_8BIT(Register::E, Register::L),
+
+        0x5F => Instruction::LD_8BIT(Register::E, Register::A),
+
+        _=> panic!("Unknown opcode: 0x{:02X}", opcode),
+    }
+}
+
+pub enum Register {
+    A,
+    B,
+    C,
+    D,
+    E,
+    H,
+    L,
+}
+
+pub enum Instruction {
+    LD_8BIT(Register, Register),
+}
+
+struct CPU {
+    //registers
+    a: u8,
+    b: u8,
+    c: u8,
+    d: u8,
+    e: u8,
+    h: u8,
+    l: u8,
+
+    sp: u16,
+    pc: u16,
+
+    //flags
+    z: bool, // Zero flag
+    n: bool, // Subtract flag
+    half_carry: bool, // Half carry flag
+    carry: bool, // Carry flag
+}
+
+impl CPU {
+    pub fn read_register(&self, reg: Register) -> u8 {
+        match reg {
+            Register::A => self.a,
+            Register::B => self.b,
+            Register::C => self.c,
+            Register::D => self.d,
+            Register::E => self.e,
+            Register::H => self.h,
+            Register::L => self.l,
+            _ => 0xFF, // Invalid register
+        }
+    }
+
+    pub fn write_register(&mut self, reg: Register, value: u8) {
+        match reg {
+            Register::A => self.a = value,
+            Register::B => self.b = value,
+            Register::C => self.c = value,
+            Register::D => self.d = value,
+            Register::E => self.e = value,
+            Register::H => self.h = value,
+            Register::L => self.l = value,
+            _ => {}
+        }
+    }
+
+    pub fn execute_instruction(&mut self, instruction: Instruction) {
+        match instruction {
+            Instruction::LD_8BIT(dest, src) => {
+                // Load the value from src register to dest register
+                let value = self.read_register(src);
+                self.write_register(dest, value);
+            }
+        }
+    }
+}
+
 fn main() -> io::Result<()> {
     let mut cartridge = Cartridge {
         rom: Vec::new(),
@@ -124,6 +235,31 @@ fn main() -> io::Result<()> {
         hram: [0; 0x7F],
         ie_register: 0,
     };
+
+    let mut gb_cpu = CPU {
+        a: 0,
+        b: 0,
+        c: 5,
+        d: 0,
+        e: 0,
+        h: 0,
+        l: 0,
+        sp: 0xFFFE,
+        pc: 0x0100,
+        z: false,
+        n: false,
+        half_carry: false,
+        carry: false,
+    };
+    println!("Initial B state: {:?}", gb_cpu.read_register(Register::B));
+    println!("Initial C state: {:?}", gb_cpu.read_register(Register::C));
+
+    let opcode = 0x41;
+    let decoded_instruction = decode_opcode(opcode);
+    gb_cpu.execute_instruction(decoded_instruction);
+
+    println!("B state after LD B, C: {:?}", gb_cpu.read_register(Register::B));
+    println!("C state after LD B, C: {:?}", gb_cpu.read_register(Register::C));
     
     Ok(())
 }
